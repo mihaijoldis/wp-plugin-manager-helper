@@ -46,3 +46,62 @@ add_action('admin_notices', function() {
 register_activation_hook(__FILE__, function() {
     set_transient('wpmh_activated', true, 5);
 });
+
+// Expose helper object to frontend - multiple hooks for better reliability
+add_action('admin_head', function() {
+    if (!current_user_can('install_plugins')) return;
+    ?>
+    <script>
+    // Initialize immediately in head
+    window.wpmHelper = {
+        version: '<?php echo WPMH_VERSION; ?>',
+        ajaxUrl: '<?php echo admin_url('admin-ajax.php'); ?>',
+        restUrl: '<?php echo rest_url('wp-plugin-manager/v1'); ?>',
+        nonce: '<?php echo wp_create_nonce('wp_rest'); ?>',
+        initialized: true
+    };
+    console.log('[WPM Helper] Initialized in head:', window.wpmHelper);
+    </script>
+    <?php
+});
+
+add_action('admin_footer', function() {
+    if (!current_user_can('install_plugins')) return;
+    ?>
+    <script>
+    // Ensure it's available in footer too
+    if (!window.wpmHelper) {
+        window.wpmHelper = {
+            version: '<?php echo WPMH_VERSION; ?>',
+            ajaxUrl: '<?php echo admin_url('admin-ajax.php'); ?>',
+            restUrl: '<?php echo rest_url('wp-plugin-manager/v1'); ?>',
+            nonce: '<?php echo wp_create_nonce('wp_rest'); ?>',
+            initialized: true
+        };
+        console.log('[WPM Helper] Initialized in footer:', window.wpmHelper);
+    } else {
+        console.log('[WPM Helper] Already initialized:', window.wpmHelper);
+    }
+    
+    // Also add a data attribute to body for easier detection
+    document.body.setAttribute('data-wpm-helper', 'active');
+    </script>
+    <?php
+});
+
+// Also add to wp_head for non-admin pages that might need it
+add_action('wp_head', function() {
+    if (!current_user_can('install_plugins')) return;
+    ?>
+    <script>
+    window.wpmHelper = {
+        version: '<?php echo WPMH_VERSION; ?>',
+        ajaxUrl: '<?php echo admin_url('admin-ajax.php'); ?>',
+        restUrl: '<?php echo rest_url('wp-plugin-manager/v1'); ?>',
+        nonce: '<?php echo wp_create_nonce('wp_rest'); ?>',
+        initialized: true
+    };
+    console.log('[WPM Helper] Initialized in wp_head:', window.wpmHelper);
+    </script>
+    <?php
+});
