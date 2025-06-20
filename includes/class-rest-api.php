@@ -76,8 +76,52 @@ class WPMH_REST_API {
         
         $results = WPMH_Plugin_Installer::install_plugins($plugins, $activate);
         
+        // Process results for better response format
+        $installed = array();
+        $errors = array();
+        $summary = array(
+            'total' => count($plugins),
+            'installed' => 0,
+            'activated' => 0,
+            'already_installed' => 0,
+            'already_active' => 0,
+            'errors' => 0
+        );
+        
+        foreach ($results as $result) {
+            switch ($result['status']) {
+                case 'installed':
+                case 'installed_activated':
+                    $installed[] = $result['slug'];
+                    $summary['installed']++;
+                    if ($result['status'] === 'installed_activated') {
+                        $summary['activated']++;
+                    }
+                    break;
+                case 'activated':
+                    $summary['activated']++;
+                    break;
+                case 'already_installed':
+                    $summary['already_installed']++;
+                    break;
+                case 'already_active':
+                    $summary['already_active']++;
+                    break;
+                default:
+                    $errors[] = array(
+                        'slug' => $result['slug'],
+                        'message' => $result['message']
+                    );
+                    $summary['errors']++;
+                    break;
+            }
+        }
+        
         return new WP_REST_Response(array(
             'success' => true,
+            'installed' => $installed,
+            'errors' => $errors,
+            'summary' => $summary,
             'results' => $results,
             'timestamp' => current_time('mysql')
         ), 200);
